@@ -1,0 +1,84 @@
+# First cell: Import necessary libraries
+import cv2
+import numpy as np
+import face_recognition
+from PIL import Image, ImageDraw
+import hashlib
+import matplotlib.pyplot as plt
+%matplotlib inline
+
+# Second cell: Define helper functions
+def generate_face_code(face_encoding):
+    """Generate a unique code based on facial features."""
+    feature_str = ','.join(map(str, face_encoding))
+    return hashlib.sha256(feature_str.encode()).hexdigest()[:16]
+
+def draw_facial_landmarks(image, face_landmarks):
+    """Draw facial landmarks on the image."""
+    pil_image = Image.fromarray(image)
+    d = ImageDraw.Draw(pil_image)
+    
+    for facial_feature in face_landmarks.keys():
+        d.line(face_landmarks[facial_feature], width=5, fill=(255, 255, 0))
+    
+    return np.array(pil_image)
+
+# Third cell: Main facial identification function
+def facial_id_system(image_path):
+    # Load the image
+    image = face_recognition.load_image_file(image_path)
+    
+    # Find all face locations and landmarks in the image
+    face_locations = face_recognition.face_locations(image)
+    face_landmarks = face_recognition.face_landmarks(image)
+    face_encodings = face_recognition.face_encodings(image, face_locations)
+    
+    if not face_locations:
+        return "No faces found in the image."
+    
+    # Process each face found in the image
+    for (top, right, bottom, left), face_landmark, face_encoding in zip(face_locations, face_landmarks, face_encodings):
+        # Generate unique code for the face
+        face_code = generate_face_code(face_encoding)
+        
+        # Draw rectangle around the face
+        cv2.rectangle(image, (left, top), (right, bottom), (0, 255, 0), 2)
+        
+        # Draw facial landmarks
+        image = draw_facial_landmarks(image, face_landmark)
+        
+        # Put the unique code on the image
+        cv2.putText(image, face_code, (left, top - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 2)
+    
+    return image, face_code
+
+# Fourth cell: Run the system and display results
+# Replace 'path_to_your_image.jpg' with the actual path to your image
+image_path = 'path_to_your_image.jpg'
+result_image, face_code = facial_id_system(image_path)
+
+plt.figure(figsize=(12, 8))
+plt.imshow(cv2.cvtColor(result_image, cv2.COLOR_BGR2RGB))
+plt.title(f"Facial ID: {face_code}")
+plt.axis('off')
+plt.show()
+
+print(f"Unique Face Code: {face_code}")
+
+# Fifth cell (optional): Compare two images
+def compare_faces(image_path1, image_path2):
+    # Load images and compute face encodings
+    image1 = face_recognition.load_image_file(image_path1)
+    image2 = face_recognition.load_image_file(image_path2)
+    
+    encoding1 = face_recognition.face_encodings(image1)[0]
+    encoding2 = face_recognition.face_encodings(image2)[0]
+    
+    # Compare face encodings
+    results = face_recognition.compare_faces([encoding1], encoding2)
+    
+    return results[0]
+
+# Example usage (uncomment and replace with your image paths to use):
+# is_same_person = compare_faces('path_to_image1.jpg', 'path_to_image2.jpg')
+# print(f"Same person: {is_same_person}")
